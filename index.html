@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BPMN Process Visualizer</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+</head>
+<body>
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <circle cx="14" cy="14" r="13" stroke="url(#grad)" stroke-width="2"/>
+          <path d="M8 14h12M14 8v12" stroke="url(#grad)" stroke-width="2" stroke-linecap="round"/>
+          <defs>
+            <linearGradient id="grad" x1="0" y1="0" x2="28" y2="28">
+              <stop offset="0%" stop-color="#6366f1"/>
+              <stop offset="100%" stop-color="#a855f7"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <h1 class="app-title">BPMN Process Visualizer</h1>
+    </div>
+    <div class="header-actions">
+      <button id="btn-load-sample" class="btn btn-ghost">📂 Mẫu Demo</button>
+      <button id="btn-reset" class="btn btn-ghost btn-danger">🗑 Reset</button>
+      <button id="btn-analyze" class="btn btn-primary">⚡ Phân tích</button>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <!-- SIDEBAR: Toolbox -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-title">Phần tử</div>
+        <div class="toolbox">
+          <div class="tool-item" draggable="true" data-type="start" title="Start Event">
+            <div class="node-preview node-start"></div>
+            <span>Start Event</span>
+          </div>
+          <div class="tool-item" draggable="true" data-type="end" title="End Event">
+            <div class="node-preview node-end"></div>
+            <span>End Event</span>
+          </div>
+          <div class="tool-item" draggable="true" data-type="task" title="Task">
+            <div class="node-preview node-task">Task</div>
+            <span>Task</span>
+          </div>
+          <div class="tool-item" draggable="true" data-type="gateway-xor" title="Gateway XOR">
+            <div class="node-preview node-gateway-xor">✕</div>
+            <span>Gateway XOR</span>
+          </div>
+          <div class="tool-item" draggable="true" data-type="gateway-and" title="Gateway AND">
+            <div class="node-preview node-gateway-and">+</div>
+            <span>Gateway AND</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section" id="props-panel" style="display:none">
+        <div class="sidebar-title">Thuộc tính</div>
+        <div class="props-form">
+          <label>Tên:</label>
+          <input id="prop-name" type="text" class="prop-input" placeholder="Nhãn node..." />
+          <div id="prop-tasks-only" class="props-grid" style="display:none">
+            <div class="prop-group">
+              <label>Thời gian (phút):</label>
+              <input id="prop-duration" type="number" class="prop-input" placeholder="0" min="0" />
+            </div>
+            <div class="prop-group">
+              <label>Nhân sự (tên, cách nhau dấu phẩy):</label>
+              <input id="prop-personnel" type="text" class="prop-input" placeholder="VD: Nam, Hoa..." />
+            </div>
+            <div class="prop-group">
+              <label>Chi phí ($):</label>
+              <input id="prop-cost" type="number" class="prop-input" placeholder="0" min="0" />
+            </div>
+            <div class="prop-group">
+              <label>Thiết bị / Vật tư (cách nhau dấu phẩy):</label>
+              <input id="prop-material" type="text" class="prop-input" placeholder="VD: Máy in 3D, Khoan..." />
+            </div>
+          </div>
+          <button id="btn-apply-props" class="btn btn-primary w-full">Áp dụng</button>
+          <button id="btn-delete-node" class="btn btn-ghost btn-danger w-full" style="margin-top:6px">🗑 Xóa node</button>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-title">Hướng dẫn</div>
+        <ul class="guide-list">
+          <li>🖱 Kéo phần tử vào canvas</li>
+          <li>⚡ Click node → giữ Shift → click node khác để nối</li>
+          <li>🖊 Click node để chỉnh sửa</li>
+          <li>⌫ Bấm Delete để xóa đã chọn</li>
+          <li>📊 Bấm Phân tích để xem kết quả</li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- CANVAS AREA -->
+    <div class="canvas-wrapper">
+      <div class="canvas-toolbar">
+        <button id="btn-connect-mode" class="btn btn-sm" title="Chế độ nối node (Shift+Click)">🔗 Chế độ nối</button>
+        <span class="canvas-hint" id="canvas-hint">Kéo phần tử từ sidebar vào đây để bắt đầu</span>
+      </div>
+      <svg id="canvas" class="canvas-svg">
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1" />
+          </marker>
+          <marker id="arrow-highlight" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#f59e0b" />
+          </marker>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <g id="edges-layer"></g>
+        <g id="nodes-layer"></g>
+      </svg>
+    </div>
+
+    <!-- RIGHT PANEL: Stats + Paths -->
+    <aside class="right-panel" id="right-panel">
+      <div class="panel-tabs">
+        <button class="tab-btn active" data-tab="stats">📊 Thống kê</button>
+        <button class="tab-btn" data-tab="paths">🗺 Đường đi</button>
+        <button class="tab-btn" data-tab="resources">📋 Tài nguyên</button>
+      </div>
+
+      <!-- Stats Tab -->
+      <div class="tab-content active" id="tab-stats">
+        <div class="stat-cards">
+          <div class="stat-card" id="stat-tasks">
+            <div class="stat-icon">📦</div>
+            <div class="stat-value" id="count-tasks">0</div>
+            <div class="stat-label">Tasks</div>
+          </div>
+          <div class="stat-card" id="stat-gateways">
+            <div class="stat-icon">✦</div>
+            <div class="stat-value" id="count-gateways">0</div>
+            <div class="stat-label">Gateways</div>
+          </div>
+          <div class="stat-card" id="stat-events">
+            <div class="stat-icon">⬤</div>
+            <div class="stat-value" id="count-events">0</div>
+            <div class="stat-label">Events</div>
+          </div>
+        </div>
+
+        <div class="chart-title" style="margin-top: 12px; margin-bottom: 6px;">Tiêu hao tổng (Tasks)</div>
+        <div class="stat-cards">
+          <div class="stat-card" id="stat-personnel" style="border-color: rgba(99,102,241,0.3)">
+            <div class="stat-icon">👥</div>
+            <div class="stat-value" id="total-personnel" style="color: #818cf8; font-size: 18px;">0</div>
+            <div class="stat-label">Nhân sự</div>
+          </div>
+          <div class="stat-card" id="stat-cost" style="border-color: rgba(34,197,94,0.3)">
+            <div class="stat-icon">💲</div>
+            <div class="stat-value" id="total-cost" style="color: #4ade80; font-size: 18px;">0</div>
+            <div class="stat-label">Chi phí</div>
+          </div>
+          <div class="stat-card" id="stat-material" style="border-color: rgba(6,182,212,0.3)">
+            <div class="stat-icon">🧱</div>
+            <div class="stat-value" id="total-material" style="color: #22d3ee; font-size: 18px;">0</div>
+            <div class="stat-label">Thiết bị/Vật tư</div>
+          </div>
+        </div>
+
+        <div class="chart-section" style="margin-top: 12px;">
+          <div class="chart-title">Phân bổ phần tử</div>
+          <canvas id="chart-bar" width="240" height="160"></canvas>
+        </div>
+        <div class="chart-section">
+          <div class="chart-title">Tỉ lệ</div>
+          <canvas id="chart-pie" width="200" height="200"></canvas>
+          <div id="pie-legend" class="pie-legend"></div>
+        </div>
+
+        <div class="cycle-section" id="cycle-section" style="display:none">
+          <div class="chart-title">⏱ Cycle Time</div>
+          <div class="cycle-stats">
+            <div class="cycle-stat"><span class="cycle-label">Min</span><span class="cycle-val" id="ct-min">—</span></div>
+            <div class="cycle-stat"><span class="cycle-label">Max</span><span class="cycle-val" id="ct-max">—</span></div>
+            <div class="cycle-stat"><span class="cycle-label">Avg</span><span class="cycle-val" id="ct-avg">—</span></div>
+          </div>
+          <canvas id="chart-ct" width="240" height="120"></canvas>
+        </div>
+      </div>
+
+      <!-- Paths Tab -->
+      <div class="tab-content" id="tab-paths">
+        <div id="paths-empty" class="paths-empty">
+          <div class="paths-empty-icon">🗺</div>
+          <p>Bấm <strong>Phân tích</strong> để tìm tất cả đường đi.</p>
+        </div>
+        <div id="paths-list" class="paths-list"></div>
+      </div>
+
+      <!-- Resources Tab -->
+      <div class="tab-content" id="tab-resources">
+        <div id="res-empty" class="paths-empty">
+          <div class="paths-empty-icon">📋</div>
+          <p>Chưa có dữ liệu tài nguyên.</p>
+        </div>
+        <div id="res-content" style="display:none">
+          <div class="chart-title">Theo Nhân sự</div>
+          <div id="res-personnel-list" class="res-list"></div>
+          
+          <div class="chart-title" style="margin-top: 16px;">Theo Thiết bị / Vật tư</div>
+          <div id="res-material-list" class="res-list"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Edge label modal -->
+  <div id="edge-modal" class="modal" style="display:none">
+    <div class="modal-box">
+      <div class="modal-title">Nhãn cạnh</div>
+      <input id="edge-label-input" type="text" class="prop-input" placeholder="Nhãn (tuỳ chọn)..." />
+      <div class="modal-actions">
+        <button id="edge-modal-cancel" class="btn btn-ghost">Huỷ</button>
+        <button id="edge-modal-ok" class="btn btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tooltip for Node Details -->
+  <div id="node-tooltip" class="tooltip" style="display:none; position:fixed; pointer-events:none; z-index:1000;">
+    <div class="tooltip-header"><span id="tt-type" class="tt-badge">Task</span></div>
+    <div class="tooltip-title" id="tt-name">Node Name</div>
+    <div class="tooltip-body" id="tt-details" style="display:none">
+      <div class="tt-row"><span>⏱ Thời gian:</span><span id="tt-dur">0m</span></div>
+      <div class="tt-row"><span>👥 Nhân sự:</span><span id="tt-pers" style="max-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;">0</span></div>
+      <div class="tt-row"><span>💲 Chi phí:</span><span id="tt-cost">$0</span></div>
+      <div class="tt-row"><span>🧱 Thiết bị/VT:</span><span id="tt-mat" style="max-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;">0</span></div>
+    </div>
+  </div>
+
+  <!-- Context Menu -->
+  <div id="context-menu" class="context-menu" style="display:none; position:fixed; z-index:2000;">
+    <div class="ctx-item" id="ctx-edit">✏️ Chỉnh sửa Thuộc tính</div>
+    <div class="ctx-divider"></div>
+    <div class="ctx-item ctx-danger" id="ctx-delete">🗑 Xoá Phần tử</div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
